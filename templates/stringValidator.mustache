@@ -1,0 +1,25 @@
+import { AbstractControl, ValidatorFn } from '@angular/forms';
+export function stringValidator(minLength,maxLength,pattern): ValidatorFn {
+	return (control: AbstractControl): { [key: string]: any } | null => {
+        let errors: string[] = [];
+        if (minLength && control.value < minLength) {
+            errors.push(`Length lower then ${minLength}`);
+        }
+        if (maxLength && control.value > maxLength) {
+            errors.push(`Length higher then ${maxLength}`);
+        }
+        if (pattern) {
+            let ptrn = pattern;
+
+            if (ptrn.charAt(0) === '/' && ptrn.charAt(ptrn.length - 1) === '/') {
+            // remove leading and last '/' because it is not needed
+            ptrn = ptrn.substr(1, ptrn.length - 2);
+            }
+            if (!(new RegExp(ptrn).test(control.value))) {
+                errors.push(`Wrong format ${pattern}`);
+            }
+        }
+		return (errors&&errors.length>0) ?  { schemeValidation: { value: control.value }}:null ;
+	};
+}
+

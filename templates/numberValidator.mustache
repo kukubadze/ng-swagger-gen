@@ -1,0 +1,21 @@
+import { AbstractControl, ValidatorFn } from '@angular/forms';
+export function numberValidator(exclusiveMaximum ,maximum ,exclusiveMinimum,minimum): ValidatorFn {
+	return (control: AbstractControl): { [key: string]: any } | null => {
+        let errors: string[] = [];
+        if(maximum)
+        {
+            if (exclusiveMaximum && control.value >= maximum || !exclusiveMaximum && control.value > maximum)  {
+                errors.push(`Value greater${exclusiveMaximum?" or equal":""} then ${maximum}`);
+            }
+        }
+        if(minimum)
+        {
+            if (exclusiveMinimum  && control.value <= minimum  || !exclusiveMinimum && control.value < minimum )  {
+                errors.push(`Value less${exclusiveMinimum?" or equal":""} then ${minimum}`);
+            }
+        }
+
+		return (errors&&errors.length>0) ?  { schemeValidation: { value: control.value }}:null ;
+	};
+}
+

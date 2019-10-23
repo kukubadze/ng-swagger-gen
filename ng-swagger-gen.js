@@ -1,37 +1,40 @@
-'use strict';
+"use strict";
 
 /* jshint -W014 */
 /* jshint -W083 */
 
-const fs = require('fs');
-const path = require('path');
-const Mustache = require('mustache');
-const $RefParser = require('json-schema-ref-parser');
-var npmConfig = require('npm-conf');
+const fs = require("fs");
+const path = require("path");
+const Mustache = require("mustache");
+const $RefParser = require("json-schema-ref-parser");
+var npmConfig = require("npm-conf");
 
 /**
  * Main generate function
  */
 function ngSwaggerGen(options) {
-  if (typeof options.swagger != 'string') {
+  if (typeof options.swagger != "string") {
     console.error("Swagger file not specified in the 'swagger' option");
     process.exit(1);
   }
 
   setupProxy();
-  
-  $RefParser.bundle(options.swagger, { dereference: { circular: false } }).then(
-    data => {
-      doGenerate(data, options);
-    },
-    err => {
-      console.error(
-        `Error reading swagger location ${options.swagger}: ${err}`
-      );
-    }
-  ).catch(function (error) {
-    console.error(`Error: ${error}`);
-  });
+
+  $RefParser
+    .bundle(options.swagger, { dereference: { circular: false } })
+    .then(
+      data => {
+        doGenerate(data, options);
+      },
+      err => {
+        console.error(
+          `Error reading swagger location ${options.swagger}: ${err}`
+        );
+      }
+    )
+    .catch(function(error) {
+      console.error(`Error: ${error}`);
+    });
 }
 
 /**
@@ -40,11 +43,11 @@ function ngSwaggerGen(options) {
  * and global-tunnel-ng for previous versions.
  */
 function setupProxy() {
-  var globalAgent = require('global-agent');
-  var globalTunnel = require('global-tunnel-ng');
+  var globalAgent = require("global-agent");
+  var globalTunnel = require("global-tunnel-ng");
   var proxyAddress = getProxyAndSetupEnv();
 
-  const NODEJS_VERSION = parseInt(process.version.slice(1).split('.')[0], 10);
+  const NODEJS_VERSION = parseInt(process.version.slice(1).split(".")[0], 10);
   if (NODEJS_VERSION >= 10 && proxyAddress) {
     // `global-agent` works with Node.js v10 and above.
     globalAgent.bootstrap();
@@ -60,18 +63,18 @@ function setupProxy() {
  * the correct proxy address. Additionally we need to remove HTTP_PROXY
  * and HTTPS_PROXY environment variables, if present.
  * This is again for globalTunnel compatibility.
- * 
+ *
  * This method only needs to be run when global-agent is used
  */
 function getProxyAndSetupEnv() {
   var proxyEnvVariableNames = [
-    'https_proxy',
-    'HTTPS_PROXY',
-    'http_proxy',
-    'HTTP_PROXY'
+    "https_proxy",
+    "HTTPS_PROXY",
+    "http_proxy",
+    "HTTP_PROXY"
   ];
 
-  var npmVariableNames = ['https-proxy', 'http-proxy', 'proxy'];
+  var npmVariableNames = ["https-proxy", "http-proxy", "proxy"];
 
   var key;
   var val;
@@ -106,15 +109,15 @@ function getProxyAndSetupEnv() {
  */
 function doGenerate(swagger, options) {
   if (!options.templates) {
-    options.templates = path.join(__dirname, 'templates');
+    options.templates = path.join(__dirname, "templates");
   }
 
-  var output = path.normalize(options.output || 'src/app/api');
-  var prefix = options.prefix || 'Api';
+  var output = path.normalize(options.output || "src/app/api");
+  var prefix = options.prefix || "Api";
 
-  if (swagger.swagger !== '2.0') {
+  if (swagger.swagger !== "2.0") {
     console.error(
-      'Invalid swagger specification. Must be a 2.0. Currently ' +
+      "Invalid swagger specification. Must be a 2.0. Currently " +
         swagger.swagger
     );
     process.exit(1);
@@ -127,12 +130,12 @@ function doGenerate(swagger, options) {
   // Apply the tag filter. If includeTags is null, uses all services,
   // but still can remove unused models
   const includeTags = options.includeTags;
-  if (typeof includeTags == 'string') {
-    options.includeTags = includeTags.split(',');
+  if (typeof includeTags == "string") {
+    options.includeTags = includeTags.split(",");
   }
   const excludeTags = options.excludeTags;
-  if (typeof excludeTags == 'string') {
-    options.excludeTags = excludeTags.split(',');
+  if (typeof excludeTags == "string") {
+    options.excludeTags = excludeTags.split(",");
   }
   applyTagFilter(models, services, options);
 
@@ -140,16 +143,16 @@ function doGenerate(swagger, options) {
   var templates = {};
   var files = fs.readdirSync(options.templates);
   files.forEach(function(file, index) {
-    var pos = file.indexOf('.mustache');
+    var pos = file.indexOf(".mustache");
     if (pos >= 0) {
       var fullFile = path.join(options.templates, file);
-      templates[file.substr(0, pos)] = fs.readFileSync(fullFile, 'utf-8');
+      templates[file.substr(0, pos)] = fs.readFileSync(fullFile, "utf-8");
     }
   });
 
   // Prepare the output folder
-  const modelsOutput = path.join(output, 'models');
-  const servicesOutput = path.join(output, 'services');
+  const modelsOutput = path.join(output, "models");
+  const servicesOutput = path.join(output, "services");
   mkdirs(modelsOutput);
   mkdirs(servicesOutput);
 
@@ -158,19 +161,21 @@ function doGenerate(swagger, options) {
 
   // Utility function to render a template and write it to a file
   var generate = function(template, model, file) {
-    var code = Mustache.render(template, model, templates)
-      .replace(/[^\S\r\n]+$/gm, '');
-    fs.writeFileSync(file, code, 'UTF-8');
-    console.info('Wrote ' + file);
+    var code = Mustache.render(template, model, templates).replace(
+      /[^\S\r\n]+$/gm,
+      ""
+    );
+    fs.writeFileSync(file, code, "UTF-8");
+    console.info("Wrote " + file);
   };
 
   // Calculate the globally used names
-  var moduleClass = toClassName(prefix + 'Module');
+  var moduleClass = toClassName(prefix + "Module");
   var moduleFile = toFileName(moduleClass);
   // Angular's best practices demands xxx.module.ts, not xxx-module.ts
-  moduleFile = moduleFile.replace(/\-module$/, '.module');
-  var configurationClass = toClassName(prefix + 'Configuration');
-  var configurationInterface = toClassName(prefix + 'ConfigurationInterface');
+  moduleFile = moduleFile.replace(/\-module$/, ".module");
+  var configurationClass = toClassName(prefix + "Configuration");
+  var configurationInterface = toClassName(prefix + "ConfigurationInterface");
   var configurationFile = toFileName(configurationClass);
 
   function applyGlobals(to) {
@@ -201,7 +206,7 @@ function doGenerate(swagger, options) {
     generate(
       templates.model,
       model,
-      path.join(modelsOutput, model.modelFile + '.ts')
+      path.join(modelsOutput, model.modelFile + ".ts")
     );
     if (options.generateExamples && model.modelExample) {
       var example = JSON.stringify(model.modelExample, null, 2);
@@ -212,7 +217,7 @@ function doGenerate(swagger, options) {
       generate(
         templates.example,
         model,
-        path.join(modelsOutput, model.modelExampleFile + '.ts')
+        path.join(modelsOutput, model.modelExampleFile + ".ts")
       );
     }
   }
@@ -226,9 +231,11 @@ function doGenerate(swagger, options) {
       var basename = path.basename(file);
       for (var modelName in models) {
         var model = models[normalizeModelName(modelName)];
-        if (basename == model.modelFile + '.ts'
-          || basename == model.modelExampleFile + '.ts'
-            && model.modelExampleStr != null) {
+        if (
+          basename == model.modelFile + ".ts" ||
+          (basename == model.modelExampleFile + ".ts" &&
+            model.modelExampleStr != null)
+        ) {
           ok = true;
           break;
         }
@@ -240,16 +247,54 @@ function doGenerate(swagger, options) {
   }
 
   // Write the model index
-  var modelIndexFile = path.join(output, 'models.ts');
+  var modelIndexFile = path.join(output, "models.ts");
   if (options.modelIndex !== false) {
     generate(templates.models, { models: modelsArray }, modelIndexFile);
   } else if (removeStaleFiles) {
     rmIfExists(modelIndexFile);
   }
+  //write form builders
+  if (options.generateFormBuilder) {
+    const formBuildersOutput = path.join(output, "formbuilders");
+    const validatorsOutput = path.join(formBuildersOutput, "validators");
+    mkdirs(formBuildersOutput);
+    mkdirs(validatorsOutput);
+    generate(
+      templates.stringValidator,
+      {},
+      path.join(validatorsOutput, "stringValidator.ts")
+    );
+    generate(
+      templates.numberValidator,
+      {},
+      path.join(validatorsOutput, "numberValidator.ts")
+    );
+
+    var formBuilderArray = [];
+    for (var modelName in models) {
+      var model = models[normalizeModelName(modelName)];
+      if (model.modelIsObject) {
+        // When the model name differs from the class name, it will be duplicated
+        // in the array. For example the-user would be TheUser, and would be twice.
+        if (formBuilderArray.includes(model)) {
+          continue;
+        }
+        modelsArray.push(model);
+        generate(
+          templates.formBuilder,
+          model,
+          path.join(formBuildersOutput, model.modelFile + "FormBuilder" + ".ts")
+        );
+      }
+    }
+  }
 
   // Write the StrictHttpResponse type
-  generate(templates.strictHttpResponse, {},
-    path.join(output, 'strict-http-response.ts'));
+  generate(
+    templates.strictHttpResponse,
+    {},
+    path.join(output, "strict-http-response.ts")
+  );
 
   // Write the services
   var servicesArray = [];
@@ -262,7 +307,7 @@ function doGenerate(swagger, options) {
     generate(
       templates.service,
       service,
-      path.join(servicesOutput, service.serviceFile + '.ts')
+      path.join(servicesOutput, service.serviceFile + ".ts")
     );
   }
   if (servicesArray.length > 0) {
@@ -275,7 +320,7 @@ function doGenerate(swagger, options) {
       var basename = path.basename(file);
       for (var serviceName in services) {
         var service = services[serviceName];
-        if (basename == service.serviceFile + '.ts') {
+        if (basename == service.serviceFile + ".ts") {
           ok = true;
           break;
         }
@@ -287,7 +332,7 @@ function doGenerate(swagger, options) {
   }
 
   // Write the service index
-  var serviceIndexFile = path.join(output, 'services.ts');
+  var serviceIndexFile = path.join(output, "services.ts");
   if (options.serviceIndex !== false) {
     generate(templates.services, { services: servicesArray }, serviceIndexFile);
   } else if (removeStaleFiles) {
@@ -295,40 +340,51 @@ function doGenerate(swagger, options) {
   }
 
   // Write the module
-  var fullModuleFile = path.join(output, moduleFile + '.ts');
+  var fullModuleFile = path.join(output, moduleFile + ".ts");
   if (options.apiModule !== false) {
-    generate(templates.module, applyGlobals({
+    generate(
+      templates.module,
+      applyGlobals({
         services: servicesArray
       }),
-      fullModuleFile);
+      fullModuleFile
+    );
   } else if (removeStaleFiles) {
     rmIfExists(fullModuleFile);
   }
 
   // Write the configuration
   {
-    var rootUrl = '';
-    if (swagger.hasOwnProperty('host') && swagger.host !== '') {
+    var rootUrl = "";
+    if (swagger.hasOwnProperty("host") && swagger.host !== "") {
       var schemes = swagger.schemes || [];
-      var scheme = schemes.length === 0 ? '//' : schemes[0] + '://';
+      var scheme = schemes.length === 0 ? "//" : schemes[0] + "://";
       rootUrl = scheme + swagger.host;
     }
-    if (swagger.hasOwnProperty('basePath') && swagger.basePath !== ''
-      && swagger.basePath !== '/') {
+    if (
+      swagger.hasOwnProperty("basePath") &&
+      swagger.basePath !== "" &&
+      swagger.basePath !== "/"
+    ) {
       rootUrl += swagger.basePath;
     }
 
-    generate(templates.configuration, applyGlobals({
-        rootUrl: rootUrl,
+    generate(
+      templates.configuration,
+      applyGlobals({
+        rootUrl: rootUrl
       }),
-      path.join(output, configurationFile + '.ts')
+      path.join(output, configurationFile + ".ts")
     );
   }
 
   // Write the BaseService
   {
-    generate(templates.baseService, applyGlobals({}),
-      path.join(output, 'base-service.ts'));
+    generate(
+      templates.baseService,
+      applyGlobals({}),
+      path.join(output, "base-service.ts")
+    );
   }
 }
 
@@ -363,7 +419,7 @@ function applyTagFilter(models, services, options) {
   // Filter out the unused models
   var ignoreUnusedModels = options.ignoreUnusedModels !== false;
   var usedModels = new Set();
-  const addToUsed = (dep) => usedModels.add(dep);
+  const addToUsed = dep => usedModels.add(dep);
   for (var serviceName in services) {
     var include =
       (!included || included.indexOf(serviceName) >= 0) &&
@@ -371,7 +427,7 @@ function applyTagFilter(models, services, options) {
     if (!include) {
       // This service is skipped - remove it
       console.info(
-        'Ignoring service ' + serviceName + ' because it was not included'
+        "Ignoring service " + serviceName + " because it was not included"
       );
       delete services[serviceName];
     } else if (ignoreUnusedModels) {
@@ -395,9 +451,9 @@ function applyTagFilter(models, services, options) {
       if (!allDependencies.has(model.modelClass)) {
         // This model is not used - remove it
         console.info(
-          'Ignoring model ' +
+          "Ignoring model " +
             modelName +
-            ' because it was not used by any service'
+            " because it was not used by any service"
         );
         delete models[normalizeModelName(modelName)];
       }
@@ -414,7 +470,7 @@ function collectDependencies(dependencies, model, models) {
   }
   dependencies.add(model.modelClass);
   if (model.modelDependencies) {
-    model.modelDependencies.forEach((dep) =>
+    model.modelDependencies.forEach(dep =>
       collectDependencies(dependencies, dep, models)
     );
   }
@@ -430,7 +486,7 @@ function mkdirs(folderPath, mode) {
   var exists = fs.existsSync(tmpPath);
   while (!exists) {
     folders.push(tmpPath);
-    tmpPath = path.join(tmpPath, '..');
+    tmpPath = path.join(tmpPath, "..");
     exists = fs.existsSync(tmpPath);
   }
 
@@ -444,7 +500,7 @@ function mkdirs(folderPath, mode) {
  */
 function rmIfExists(file) {
   if (fs.existsSync(file)) {
-    console.info('Removing stale file ' + file);
+    console.info("Removing stale file " + file);
     fs.unlinkSync(file);
   }
 }
@@ -453,13 +509,13 @@ function rmIfExists(file) {
  * Converts a given type name into a TS file name
  */
 function toFileName(typeName) {
-  var result = '';
+  var result = "";
   var wasLower = false;
   for (var i = 0; i < typeName.length; i++) {
     var c = typeName.charAt(i);
     var isLower = /[a-z]/.test(c);
     if (!isLower && wasLower) {
-      result += '-';
+      result += "-";
     }
     result += c.toLowerCase();
     wasLower = isLower;
@@ -471,7 +527,7 @@ function toFileName(typeName) {
  * Converts a given name into a valid class name
  */
 function toClassName(name) {
-  var result = '';
+  var result = "";
   var upNext = false;
   for (var i = 0; i < name.length; i++) {
     var c = name.charAt(i);
@@ -481,14 +537,14 @@ function toClassName(name) {
     } else if (upNext) {
       result += c.toUpperCase();
       upNext = false;
-    } else if (result === '') {
+    } else if (result === "") {
       result = c.toUpperCase();
     } else {
       result += c;
     }
   }
   if (/[0-9]/.test(result.charAt(0))) {
-    result = '_' + result;
+    result = "_" + result;
   }
   return result;
 }
@@ -498,7 +554,7 @@ function toClassName(name) {
  * @param typeName
  */
 function toExampleFileName(typeName) {
-  return toFileName(typeName) + '.example';
+  return toFileName(typeName) + ".example";
 }
 
 /**
@@ -508,7 +564,7 @@ function simpleRef(ref) {
   if (!ref) {
     return null;
   }
-  var index = ref.lastIndexOf('/');
+  var index = ref.lastIndexOf("/");
   if (index >= 0) {
     ref = ref.substr(index + 1);
   }
@@ -519,22 +575,22 @@ function simpleRef(ref) {
  * Converts a given enum value into the enum name
  */
 function toEnumName(value) {
-  var result = '';
+  var result = "";
   var wasLower = false;
   for (var i = 0; i < value.length; i++) {
     var c = value.charAt(i);
     var isLower = /[a-z]/.test(c);
     if (!isLower && wasLower) {
-      result += '_';
+      result += "_";
     }
     result += c.toUpperCase();
     wasLower = isLower;
   }
   if (!isNaN(value[0])) {
-    result = '_' + result;
+    result = "_" + result;
   }
-  result = result.replace(/[^\w]/g, '_');
-  result = result.replace(/_+/g, '_');
+  result = result.replace(/[^\w]/g, "_");
+  result = result.replace(/_+/g, "_");
   return result;
 }
 
@@ -542,20 +598,20 @@ function toEnumName(value) {
  * Returns a multi-line comment for the given text
  */
 function toComments(text, level) {
-  var indent = '';
+  var indent = "";
   var i;
   for (i = 0; i < level; i++) {
-    indent += '  ';
+    indent += "  ";
   }
   if (text == null || text.length === 0) {
     return indent;
   }
-  const lines = text.trim().split('\n');
-  var result = '\n' + indent + '/**\n';
+  const lines = text.trim().split("\n");
+  var result = "\n" + indent + "/**\n";
   lines.forEach(line => {
-    result += indent + ' *' + (line === '' ? '' : ' ' + line) + '\n';
+    result += indent + " *" + (line === "" ? "" : " " + line) + "\n";
   });
-  result += indent + ' */\n' + indent;
+  result += indent + " */\n" + indent;
   return result;
 }
 
@@ -617,10 +673,10 @@ function processModels(swagger, options) {
       parent = simpleRef((model.allOf[0] || {}).$ref);
       properties = (model.allOf[1] || {}).properties || {};
       requiredProperties = (model.allOf[1] || {}).required || [];
-    } else if (model.type === 'string') {
+    } else if (model.type === "string") {
       enumValues = model.enum || [];
       if (enumValues.length == 0) {
-        simpleType = 'string';
+        simpleType = "string";
         enumValues = null;
       } else {
         for (i = 0; i < enumValues.length; i++) {
@@ -628,25 +684,28 @@ function processModels(swagger, options) {
           var enumDescriptor = {
             enumName: toEnumName(enumValue),
             enumValue: enumValue,
-            enumIsLast: i === enumValues.length - 1,
+            enumIsLast: i === enumValues.length - 1
           };
           enumValues[i] = enumDescriptor;
         }
       }
-    } else if (model.type === 'array') {
+    } else if (model.type === "array") {
       elementType = propertyType(model);
     } else if (!model.type && (model.anyOf || model.oneOf)) {
       let of = model.anyOf || model.oneOf;
       let variants = of.map(propertyType);
       simpleType = {
         allTypes: mergeTypes(...variants),
-        toString: () => variants.join(' |\n  ')
+        toString: () => variants.join(" |\n  ")
       };
-    } else if (model.type === 'object' || model.type === undefined) {
+    } else if (model.type === "object" || model.type === undefined) {
       properties = model.properties || {};
       requiredProperties = model.required || [];
-      additionalPropertiesType = model.additionalProperties &&
-          (typeof model.additionalProperties === 'object' ? propertyType(model.additionalProperties) : 'any');
+      additionalPropertiesType =
+        model.additionalProperties &&
+        (typeof model.additionalProperties === "object"
+          ? propertyType(model.additionalProperties)
+          : "any");
     } else {
       simpleType = propertyType(model);
     }
@@ -662,14 +721,16 @@ function processModels(swagger, options) {
       modelIsArray: elementType != null,
       modelIsSimple: simpleType != null,
       modelSimpleType: simpleType,
-      properties: properties == null ? null :
-        processProperties(swagger, properties, requiredProperties),
+      properties:
+        properties == null
+          ? null
+          : processProperties(swagger, properties, requiredProperties),
       modelExample: example,
       modelAdditionalPropertiesType: additionalPropertiesType,
       modelExampleFile: toExampleFileName(name),
       modelEnumValues: enumValues,
       modelElementType: elementType,
-      modelSubclasses: [],
+      modelSubclasses: []
     };
 
     if (descriptor.properties != null) {
@@ -679,8 +740,11 @@ function processModels(swagger, options) {
         descriptor.modelProperties.push(property);
       }
       descriptor.modelProperties.sort((a, b) => {
-        return a.modelName < b.modelName ? -1 :
-          a.modelName > b.modelName ? 1 : 0;
+        return a.modelName < b.modelName
+          ? -1
+          : a.modelName > b.modelName
+          ? 1
+          : 0;
       });
       if (descriptor.modelProperties.length > 0) {
         descriptor.modelProperties[
@@ -716,12 +780,14 @@ function processModels(swagger, options) {
   var addToDependencies = t => {
     if (Array.isArray(t.allTypes)) {
       t.allTypes.forEach(it => dependencies.add(it));
-    }
-    else dependencies.add(t);
+    } else dependencies.add(t);
   };
   for (name in models) {
     model = models[normalizeModelName(name)];
-    if (model.modelIsEnum || model.modelIsSimple && !model.modelSimpleType.allTypes) {
+    if (
+      model.modelIsEnum ||
+      (model.modelIsSimple && !model.modelSimpleType.allTypes)
+    ) {
       // Enums or simple types have no dependencies
       continue;
     }
@@ -745,7 +811,8 @@ function processModels(swagger, options) {
 
     if (model.modelSimpleType) addToDependencies(model.modelSimpleType);
 
-    if (model.modelAdditionalPropertiesType) addToDependencies(model.modelAdditionalPropertiesType);
+    if (model.modelAdditionalPropertiesType)
+      addToDependencies(model.modelAdditionalPropertiesType);
 
     model.modelDependencies = dependencies.get();
   }
@@ -759,34 +826,31 @@ function processModels(swagger, options) {
  * A special case is for inline objects. In this case, the result is "object".
  */
 function removeBrackets(type, nullOrUndefinedOnly) {
-  if(typeof nullOrUndefinedOnly === "undefined") {
+  if (typeof nullOrUndefinedOnly === "undefined") {
     nullOrUndefinedOnly = false;
   }
-  if (typeof type === 'object') {
+  if (typeof type === "object") {
     if (type.allTypes && type.allTypes.length === 1) {
       return removeBrackets(type.allTypes[0], nullOrUndefinedOnly);
     }
-    return 'object';
-  }
-  else if(type.replace(/ /g, '') !== type) {
-    return removeBrackets(type.replace(/ /g, ''));
-  }
-  else if(type.indexOf('null|') === 0) {
-    return removeBrackets(type.substr('null|'.length));
-  }
-  else if(type.indexOf('undefined|') === 0) {
+    return "object";
+  } else if (type.replace(/ /g, "") !== type) {
+    return removeBrackets(type.replace(/ /g, ""));
+  } else if (type.indexOf("null|") === 0) {
+    return removeBrackets(type.substr("null|".length));
+  } else if (type.indexOf("undefined|") === 0) {
     // Not used currently, but robust code is better code :)
-    return removeBrackets(type.substr('undefined|'.length));
+    return removeBrackets(type.substr("undefined|".length));
   }
   if (type == null || type.length === 0 || nullOrUndefinedOnly) {
     return type;
   }
-  var pos = type.indexOf('Array<');
+  var pos = type.indexOf("Array<");
   if (pos >= 0) {
-    var start = 'Array<'.length;
+    var start = "Array<".length;
     return type.substr(start, type.length - start - 1);
   }
-  pos = type.indexOf('[');
+  pos = type.indexOf("[");
   return pos >= 0 ? type.substr(0, pos) : type;
 }
 
@@ -811,106 +875,119 @@ function mergeTypes(...types) {
 function propertyType(property) {
   var type;
   if (property === null || property.type === null) {
-    return 'null';
+    return "null";
   } else if (property.$ref != null) {
     // Type is a reference
     return simpleRef(property.$ref);
-  } else if (property['x-type']) {
+  } else if (property["x-type"]) {
     // Type is read from the x-type vendor extension
-    type = (property['x-type'] || '').toString().replace('List<', 'Array<');
-    return type.length == 0 ? 'null' : type;
-  } else if (property['x-nullable']) {
-    return 'null | ' + propertyType(
-      Object.assign(property, {'x-nullable': undefined}));
+    type = (property["x-type"] || "").toString().replace("List<", "Array<");
+    return type.length == 0 ? "null" : type;
+  } else if (property["x-nullable"]) {
+    return (
+      "null | " +
+      propertyType(Object.assign(property, { "x-nullable": undefined }))
+    );
   } else if (!property.type && (property.anyOf || property.oneOf)) {
     let variants = (property.anyOf || property.oneOf).map(propertyType);
     return {
       allTypes: mergeTypes(...variants),
-      toString: () => variants.join(' | ')
+      toString: () => variants.join(" | ")
     };
   } else if (!property.type && property.allOf) {
-    let variants = (property.allOf).map(propertyType);
+    let variants = property.allOf.map(propertyType);
     return {
       allTypes: mergeTypes(...variants),
-      toString: () => variants.join(' & ')
+      toString: () => variants.join(" & ")
     };
   } else if (Array.isArray(property.type)) {
-    let variants = property.type.map(type => propertyType(Object.assign({}, property, {type})));
+    let variants = property.type.map(type =>
+      propertyType(Object.assign({}, property, { type }))
+    );
     return {
       allTypes: mergeTypes(...variants),
-      toString: () => variants.join(' | ')
+      toString: () => variants.join(" | ")
     };
   }
   switch (property.type) {
-    case 'null':
-      return 'null';
-    case 'string':
+    case "null":
+      return "null";
+    case "string":
       if (property.enum && property.enum.length > 0) {
-        return '\'' + property.enum.join('\' | \'') + '\'';
+        return "'" + property.enum.join("' | '") + "'";
+      } else if (property.const) {
+        return "'" + property.const + "'";
       }
-      else if (property.const) {
-        return '\'' + property.const + '\'';
-      }
-      return 'string';
-    case 'array':
-      if (Array.isArray(property.items)) { // support for tuples
-        if (!property.maxItems) return 'Array<any>'; // there is unable to define unlimited tuple in TypeScript
+      return "string";
+    case "array":
+      if (Array.isArray(property.items)) {
+        // support for tuples
+        if (!property.maxItems) return "Array<any>"; // there is unable to define unlimited tuple in TypeScript
         let minItems = property.minItems || 0,
-            maxItems = property.maxItems,
-            types = property.items.map(propertyType);
-        types.push(property.additionalItems ? propertyType(property.additionalItems) : 'any');
+          maxItems = property.maxItems,
+          types = property.items.map(propertyType);
+        types.push(
+          property.additionalItems
+            ? propertyType(property.additionalItems)
+            : "any"
+        );
         let variants = [];
-        for (let i = minItems; i <= maxItems; i++) variants.push(types.slice(0, i));
+        for (let i = minItems; i <= maxItems; i++)
+          variants.push(types.slice(0, i));
         return {
           allTypes: mergeTypes(...types.slice(0, maxItems)),
-          toString: () => variants.map(types => `[${types.join(', ')}]`).join(' | ')
+          toString: () =>
+            variants.map(types => `[${types.join(", ")}]`).join(" | ")
         };
-      }
-      else {
+      } else {
         let itemType = propertyType(property.items);
         return {
           allTypes: mergeTypes(itemType),
-          toString: () => 'Array<' + itemType + '>'
+          toString: () => "Array<" + itemType + ">"
         };
       }
-    case 'integer':
-    case 'number':
-      if (property.enum && property.enum.length > 0) return property.enum.join(' | ');
+    case "integer":
+    case "number":
+      if (property.enum && property.enum.length > 0)
+        return property.enum.join(" | ");
       if (property.const) return property.const;
-      return 'number';
-    case 'boolean':
-      return 'boolean';
-    case 'file':
-      return 'Blob';
-    case 'object':
-      var def = '{';
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "file":
+      return "Blob";
+    case "object":
+      var def = "{";
       let memberCount = 0;
       var allTypes = [];
       if (property.properties) {
         for (var name in property.properties) {
           var prop = property.properties[name];
-          if (memberCount++) def += ', ';
+          if (memberCount++) def += ", ";
           type = propertyType(prop);
           allTypes.push(type);
-	        let required = property.required && property.required.indexOf(name) >= 0;
-	        def += name + (required ? ': ' : '?: ') + type;
+          let required =
+            property.required && property.required.indexOf(name) >= 0;
+          def += name + (required ? ": " : "?: ") + type;
         }
       }
       if (property.additionalProperties) {
-        if (memberCount++) def += ', ';
-        type = typeof property.additionalProperties === 'object' ?
-            propertyType(property.additionalProperties) : 'any';
-	      allTypes.push(type);
-        def += '[key: string]: ' + type;
+        if (memberCount++) def += ", ";
+        type =
+          typeof property.additionalProperties === "object"
+            ? propertyType(property.additionalProperties)
+            : "any";
+        allTypes.push(type);
+        def += "[key: string]: " + type;
       }
-      def += '}';
+      def += "}";
 
       return {
         allTypes: mergeTypes(...allTypes),
-        toString: () => def,
+        toString: () => def
       };
     default:
-      return 'any';
+      return "any";
   }
 }
 
@@ -923,25 +1000,48 @@ function processProperties(swagger, properties, requiredProperties) {
   for (var name in properties) {
     var property = properties[name];
     var descriptor = {
-      propertyName: name.indexOf('-') === -1 ? name : `"${name}"`,
+      propertyName: name.indexOf("-") === -1 ? name : `"${name}"`,
       propertyComments: toComments(property.description, 1),
       propertyRequired: requiredProperties.indexOf(name) >= 0,
       propertyType: propertyType(property),
+      propertyValidator: getPropertyValidator(property, propertyType(property))
     };
     result[name] = descriptor;
   }
   return result;
 }
-
+function getPropertyValidator(scheme, type) {
+  switch (type) {
+    case "number": {
+      if (!scheme.maximum && !scheme.minimum) return;
+      const exclusiveMaximum = scheme.exclusiveMaximum
+        ? scheme.exclusiveMaximum
+        : "undefined";
+      const maximum = scheme.maximum ? scheme.maximum : "undefined";
+      exclusiveMinimum = scheme.exclusiveMinimum
+        ? scheme.exclusiveMinimum
+        : "undefined";
+      const minimum = scheme.minimum ? scheme.minimum : "undefined";
+      return `numberValidator(${exclusiveMaximum},${maximum},${exclusiveMinimum},${minimum})`;
+    }
+    case "string": {
+      if (!scheme.minLength && !scheme.maxLength && !scheme.pattern) return;
+      const minLength = scheme.minLength ? scheme.minLength : "undefined";
+      const maxLength = scheme.maxLength ? scheme.maxLength : "undefined";
+      const pattern = scheme.pattern ? `"${scheme.pattern}"` : "undefined";
+      return `stringValidator(${minLength},${maxLength},${pattern})`;
+    }
+  }
+}
 /**
  * Resolves a local reference in the given swagger file
  */
 function resolveRef(swagger, ref) {
-  if (ref.indexOf('#/') != 0) {
-    console.error('Resolved references must start with #/. Current: ' + ref);
+  if (ref.indexOf("#/") != 0) {
+    console.error("Resolved references must start with #/. Current: " + ref);
     process.exit(1);
   }
-  var parts = ref.substr(2).split('/');
+  var parts = ref.substr(2).split("/");
   var result = swagger;
   for (var i = 0; i < parts.length; i++) {
     var part = parts[i];
@@ -973,7 +1073,7 @@ function processResponses(swagger, def, path, models) {
       if (operationResponses.resultType) {
         // More than one successful response, use union type
         operationResponses.resultType += ` | ${type}`;
-        operationResponses.resultDescription += ` or ${response.description}`
+        operationResponses.resultDescription += ` or ${response.description}`;
       } else {
         operationResponses.resultType = type;
         operationResponses.resultDescription = response.description;
@@ -987,11 +1087,11 @@ function processResponses(swagger, def, path, models) {
     }
     operationResponses[code] = {
       code: code,
-      type: type,
+      type: type
     };
   }
   if (!operationResponses.resultType) {
-    operationResponses.resultType = 'null';
+    operationResponses.resultType = "null";
   }
   return operationResponses;
 }
@@ -1002,12 +1102,10 @@ function processResponses(swagger, def, path, models) {
  * if there is a parameters class, or "/a/${var1}/b/${var2}" otherwise.
  */
 function toPathExpression(operationParameters, paramsClass, path) {
-  return (path || '').replace(/\{([^}]+)}/g, (_, pName) => {
+  return (path || "").replace(/\{([^}]+)}/g, (_, pName) => {
     const param = operationParameters.find(p => p.paramName === pName);
     const paramName = param ? param.paramVar : pName;
-    return paramsClass ?
-      "${params." + paramName + "}" :
-      "${" + paramName + "}";
+    return paramsClass ? "${params." + paramName + "}" : "${" + paramName + "}";
   });
 }
 
@@ -1015,7 +1113,7 @@ function toPathExpression(operationParameters, paramsClass, path) {
  * Transforms the given string into a valid identifier
  */
 function toIdentifier(string) {
-  var result = '';
+  var result = "";
   var wasSep = false;
   for (var i = 0; i < string.length; i++) {
     var c = string.charAt(i);
@@ -1037,11 +1135,11 @@ function toIdentifier(string) {
  * If the given tag is null, returns the default from options
  */
 function tagName(tag, options) {
-  if (tag == null || tag === '') {
-    tag = options.defaultTag || 'Api';
+  if (tag == null || tag === "") {
+    tag = options.defaultTag || "Api";
   }
   tag = toIdentifier(tag);
-  return tag.charAt(0).toUpperCase() + (tag.length == 1 ? '' : tag.substr(1));
+  return tag.charAt(0).toUpperCase() + (tag.length == 1 ? "" : tag.substr(1));
 }
 
 /**
@@ -1059,10 +1157,10 @@ function operationId(given, method, url, allKnown) {
   var duplicated = allKnown.has(id);
   if (duplicated) {
     var i = 1;
-    while (allKnown.has(id + '_' + i)) {
+    while (allKnown.has(id + "_" + i)) {
       i++;
     }
-    id = id + '_' + i;
+    id = id + "_" + i;
   }
   if (generate) {
     console.warn(
@@ -1082,7 +1180,7 @@ function operationId(given, method, url, allKnown) {
         url +
         "' defines a duplicated operationId: " +
         given +
-        '. ' +
+        ". " +
         "Assuming '" +
         id +
         "'."
@@ -1100,13 +1198,13 @@ function processServices(swagger, models, options) {
   var param, name, i, j;
   var services = {};
   var minParamsForContainer = options.minParamsForContainer || 2;
-  var sortParams = options.sortParams || 'desc';
+  var sortParams = options.sortParams || "desc";
   for (var url in swagger.paths) {
     var path = swagger.paths[url];
-	  var methodParameters = path.parameters;
+    var methodParameters = path.parameters;
     for (var method in path || {}) {
       var def = path[method];
-      if (!def || method == 'parameters') {
+      if (!def || method == "parameters") {
         continue;
       }
       var tags = def.tags || [];
@@ -1116,10 +1214,10 @@ function processServices(swagger, models, options) {
         var serviceClass = toClassName(tag);
         descriptor = {
           serviceName: tag,
-          serviceClass: serviceClass + 'Service',
-          serviceFile: toFileName(serviceClass) + '.service',
+          serviceClass: serviceClass + "Service",
+          serviceFile: toFileName(serviceClass) + ".service",
           operationIds: new Set(),
-          serviceOperations: [],
+          serviceOperations: []
         };
         services[tag] = descriptor;
       }
@@ -1140,8 +1238,8 @@ function processServices(swagger, models, options) {
       var paramsClass = null;
       var paramsClassComments = null;
       if (parameters.length >= minParamsForContainer) {
-        paramsClass = id.charAt(0).toUpperCase() + id.substr(1) + 'Params';
-        paramsClassComments = toComments('Parameters for ' + id, 1);
+        paramsClass = id.charAt(0).toUpperCase() + id.substr(1) + "Params";
+        paramsClassComments = toComments("Parameters for " + id, 1);
       }
 
       var operationParameters = [];
@@ -1162,20 +1260,22 @@ function processServices(swagger, models, options) {
           paramName: param.name,
           paramIn: param.in,
           paramVar: paramVar,
-          paramFullVar: (paramsClass == null ? '' : 'params.') + paramVar,
-          paramRequired: param.required === true || param.in === 'path',
-          paramIsQuery: param.in === 'query',
-          paramIsPath: param.in === 'path',
-          paramIsHeader: param.in === 'header',
-          paramIsBody: param.in === 'body',
-          paramIsFormData: param.in === 'formData',
-          paramIsArray: param.type === 'array',
-          paramToJson: param.in === 'formData' && paramTypeNoNull !== 'Blob' &&
-            paramTypeNoNull !== 'string',
+          paramFullVar: (paramsClass == null ? "" : "params.") + paramVar,
+          paramRequired: param.required === true || param.in === "path",
+          paramIsQuery: param.in === "query",
+          paramIsPath: param.in === "path",
+          paramIsHeader: param.in === "header",
+          paramIsBody: param.in === "body",
+          paramIsFormData: param.in === "formData",
+          paramIsArray: param.type === "array",
+          paramToJson:
+            param.in === "formData" &&
+            paramTypeNoNull !== "Blob" &&
+            paramTypeNoNull !== "string",
           paramDescription: param.description,
           paramComments: toComments(param.description, 2),
           paramType: paramType,
-          paramCollectionFormat: param.collectionFormat,
+          paramCollectionFormat: param.collectionFormat
         };
         operationParameters.push(paramDescriptor);
       }
@@ -1183,12 +1283,18 @@ function processServices(swagger, models, options) {
         if (a.paramRequired && !b.paramRequired) return -1;
         if (!a.paramRequired && b.paramRequired) return 1;
         switch (sortParams) {
-          case 'asc':
-            return a.paramName > b.paramName ? 1 :
-              a.paramName < b.paramName ? -1 : 0;
-          case 'desc':
-            return a.paramName > b.paramName ? -1 :
-              a.paramName < b.paramName ? 1 : 0;
+          case "asc":
+            return a.paramName > b.paramName
+              ? 1
+              : a.paramName < b.paramName
+              ? -1
+              : 0;
+          case "desc":
+            return a.paramName > b.paramName
+              ? -1
+              : a.paramName < b.paramName
+              ? 1
+              : 0;
           default:
             return 0;
         }
@@ -1205,39 +1311,40 @@ function processServices(swagger, models, options) {
           break;
         }
       }
-      var docString = (def.description || '').trim();
+      var docString = (def.description || "").trim();
       if (paramsClass == null) {
         for (i = 0; i < operationParameters.length; i++) {
           param = operationParameters[i];
           docString +=
-            '\n@param ' + param.paramName + ' ' + param.paramDescription;
+            "\n@param " + param.paramName + " " + param.paramDescription;
         }
       } else {
         docString +=
-          '\n@param params The `' +
+          "\n@param params The `" +
           descriptor.serviceClass +
-          '.' +
+          "." +
           paramsClass +
-          '` containing the following parameters:\n';
+          "` containing the following parameters:\n";
         for (i = 0; i < operationParameters.length; i++) {
           param = operationParameters[i];
-          docString += '\n- `' + param.paramName + '`: ';
-          var lines = (param.paramDescription || '').trim().split('\n');
+          docString += "\n- `" + param.paramName + "`: ";
+          var lines = (param.paramDescription || "").trim().split("\n");
           for (var l = 0; l < lines.length; l++) {
             var line = lines[l];
-            if (line === '') {
-              docString += '\n';
+            if (line === "") {
+              docString += "\n";
             } else {
-              docString += (l == 0 ? '' : '  ') + line + '\n';
+              docString += (l == 0 ? "" : "  ") + line + "\n";
             }
           }
         }
       }
       if (operationResponses.resultDescription) {
-        docString += '\n@return ' + operationResponses.resultDescription;
+        docString += "\n@return " + operationResponses.resultDescription;
       }
       function getOperationName(string) {
-        if (options.camelCase) return string.charAt(0).toLowerCase() + string.slice(1);
+        if (options.camelCase)
+          return string.charAt(0).toLowerCase() + string.slice(1);
         else return string;
       }
       var operation = {
@@ -1245,14 +1352,17 @@ function processServices(swagger, models, options) {
         operationParamsClass: paramsClass,
         operationParamsClassComments: paramsClassComments,
         operationMethod: method.toLocaleUpperCase(),
-        operationPath: url.replace(/\'/g, '\\\''),
-        operationPathExpression:
-          toPathExpression(operationParameters, paramsClass, url),
+        operationPath: url.replace(/\'/g, "\\'"),
+        operationPathExpression: toPathExpression(
+          operationParameters,
+          paramsClass,
+          url
+        ),
         operationResultType: resultType,
-        operationHttpResponseType: '__StrictHttpResponse<' + resultType + '>',
+        operationHttpResponseType: "__StrictHttpResponse<" + resultType + ">",
         operationComments: toComments(docString, 1),
         operationParameters: operationParameters,
-        operationResponses: operationResponses,
+        operationResponses: operationResponses
       };
       var modelResult = models[normalizeModelName(removeBrackets(resultType))];
       var actualType = resultType;
@@ -1260,26 +1370,29 @@ function processServices(swagger, models, options) {
         actualType = modelResult.modelSimpleType;
       }
       operation.operationIsMultipart = isMultipart;
-      operation.operationIsVoid = actualType === 'void';
-      operation.operationIsString = actualType === 'string';
-      operation.operationIsNumber = actualType === 'number';
-      operation.operationIsOther =
-        !['void', 'number', 'boolean'].includes(actualType);
-      operation.operationIsBoolean = actualType === 'boolean';
+      operation.operationIsVoid = actualType === "void";
+      operation.operationIsString = actualType === "string";
+      operation.operationIsNumber = actualType === "number";
+      operation.operationIsOther = !["void", "number", "boolean"].includes(
+        actualType
+      );
+      operation.operationIsBoolean = actualType === "boolean";
       operation.operationIsEnum = modelResult && modelResult.modelIsEnum;
       operation.operationIsObject = modelResult && modelResult.modelIsObject;
       operation.operationIsPrimitiveArray =
-        !modelResult && (resultType.toString().includes('Array<') ||
-          resultType.toString().includes('[]'));
-      operation.operationIsFile = actualType === 'Blob';
-      operation.operationResponseType =
-        operation.operationIsFile ? 'blob' :
-        operation.operationIsVoid ||
-        operation.operationIsString ||
-        operation.operationIsNumber ||
-        operation.operationIsBoolean ||
-        operation.operationIsEnum ?
-          'text' : 'json';
+        !modelResult &&
+        (resultType.toString().includes("Array<") ||
+          resultType.toString().includes("[]"));
+      operation.operationIsFile = actualType === "Blob";
+      operation.operationResponseType = operation.operationIsFile
+        ? "blob"
+        : operation.operationIsVoid ||
+          operation.operationIsString ||
+          operation.operationIsNumber ||
+          operation.operationIsBoolean ||
+          operation.operationIsEnum
+        ? "text"
+        : "json";
       operation.operationIsUnknown = !(
         operation.operationIsVoid ||
         operation.operationIsString ||
@@ -1316,8 +1429,8 @@ function processServices(swagger, models, options) {
       for (var code in op.operationResponses) {
         var status = Number(code);
         if (!isNaN(status)) {
-          var actualDeps = (status < 200 || status >= 300)
-            ? errorDependencies : dependencies;
+          var actualDeps =
+            status < 200 || status >= 300 ? errorDependencies : dependencies;
           var response = op.operationResponses[code];
           if (response && response.type) {
             var type = response.type;

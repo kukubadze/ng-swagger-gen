@@ -1,0 +1,24 @@
+import { Injectable } from '@angular/core';
+import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { numberValidator } from './validators/numberValidator';
+import { stringValidator } from './validators/stringValidator';
+
+@Injectable({
+	providedIn: 'root'
+})
+export class {{modelClass}}FormBuilder {
+	constructor(private fb: FormBuilder) {}
+	buildFormGroup(item: any): FormGroup {
+		return this.fb.group({
+            {{#modelProperties}}
+            {{&propertyName}}: [item.{{&propertyName}}{{#propertyValidator}},{{/propertyValidator}}{{&propertyValidator}}],
+            {{/modelProperties}}
+		});
+	}
+    {{#modelProperties}}
+    buildControl{{&propertyName}}(item: any): FormControl {
+		return new FormControl(item{{#propertyValidator}},{{/propertyValidator}}{{&propertyValidator}});
+	}
+    {{/modelProperties}}
+}
+
