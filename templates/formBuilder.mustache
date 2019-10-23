@@ -6,7 +6,7 @@ import { stringValidator } from './validators/stringValidator';
 @Injectable({
 	providedIn: 'root'
 })
-export class {{modelClass}}FormBuilder {
+export class {{formBuilderClass}} {
 	constructor(private fb: FormBuilder) {}
 	buildFormGroup(item: any): FormGroup {
 		return this.fb.group({

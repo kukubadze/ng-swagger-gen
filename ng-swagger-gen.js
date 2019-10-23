@@ -253,41 +253,6 @@ function doGenerate(swagger, options) {
   } else if (removeStaleFiles) {
     rmIfExists(modelIndexFile);
   }
-  //write form builders
-  if (options.generateFormBuilder) {
-    const formBuildersOutput = path.join(output, "formbuilders");
-    const validatorsOutput = path.join(formBuildersOutput, "validators");
-    mkdirs(formBuildersOutput);
-    mkdirs(validatorsOutput);
-    generate(
-      templates.stringValidator,
-      {},
-      path.join(validatorsOutput, "stringValidator.ts")
-    );
-    generate(
-      templates.numberValidator,
-      {},
-      path.join(validatorsOutput, "numberValidator.ts")
-    );
-
-    var formBuilderArray = [];
-    for (var modelName in models) {
-      var model = models[normalizeModelName(modelName)];
-      if (model.modelIsObject) {
-        // When the model name differs from the class name, it will be duplicated
-        // in the array. For example the-user would be TheUser, and would be twice.
-        if (formBuilderArray.includes(model)) {
-          continue;
-        }
-        modelsArray.push(model);
-        generate(
-          templates.formBuilder,
-          model,
-          path.join(formBuildersOutput, model.modelFile + "FormBuilder" + ".ts")
-        );
-      }
-    }
-  }
 
   // Write the StrictHttpResponse type
   generate(
@@ -339,6 +304,100 @@ function doGenerate(swagger, options) {
     rmIfExists(serviceIndexFile);
   }
 
+  //write form builders
+  const formBuilderArray = [];
+  if (options.generateFormBuilder != false) {
+    const formBuildersOutput = path.join(output, "form-builders");
+    const validatorsOutput = path.join(formBuildersOutput, "validators");
+    mkdirs(formBuildersOutput);
+    mkdirs(validatorsOutput);
+    generate(
+      templates.stringValidator,
+      {},
+      path.join(validatorsOutput, "stringValidator.ts")
+    );
+    generate(
+      templates.numberValidator,
+      {},
+      path.join(validatorsOutput, "numberValidator.ts")
+    );
+    const serviceTypes = [];
+
+    for (var serviceId in services) {
+      var service = services[serviceId];
+      for (var o = 0; o < service.serviceOperations.length; o++) {
+        var operation = service.serviceOperations[o];
+        if (operation.operationMethod !== "GET") {
+          for (
+            var p = 0;
+            !operation.operationParameters ||
+            p < operation.operationParameters.length;
+            p++
+          ) {
+            var par = operation.operationParameters[p];
+            if (!par.paramType.allTypes) {
+              if (serviceTypes.includes(par.paramType)) {
+                continue;
+              }
+              serviceTypes.push(par.paramType);
+            } else {
+              for (var t = 0; t < par.paramType.allTypes.length; t++) {
+                if (serviceTypes.includes(par.paramType.allTypes[t])) {
+                  continue;
+                }
+                serviceTypes.push(par.paramType.allTypes[t]);
+              }
+            }
+          }
+        }
+      }
+    }
+    for (var i = 0; i < serviceTypes.length; i++) {
+      var type = serviceTypes[i];
+      for (var modelName in models) {
+        var model = models[normalizeModelName(modelName)];
+        if (model.modelClass !== type) continue;
+
+        if (model.modelIsObject) {
+          // When the model name differs from the class name, it will be duplicated
+          // in the array. For example the-user would be TheUser, and would be twice.
+          if (formBuilderArray.includes(model)) {
+            continue;
+          }
+          formBuilderArray.push(model);
+          generate(
+            templates.formBuilder,
+            model,
+            path.join(formBuildersOutput, model.formBuilderFile + ".ts")
+          );
+        }
+      }
+    }
+    if (removeStaleFiles) {
+      var modelFiles = fs.readdirSync(formBuildersOutput);
+      modelFiles.forEach((file, index) => {
+        if (file == "validators") return;
+        var basename = path.basename(file);
+        if (
+          formBuilderArray
+            .map(v => v.formBuilderFile + ".ts")
+            .indexOf(basename) < 0
+        ) {
+          rmIfExists(path.join(formBuildersOutput, file));
+        }
+      });
+    }
+  }
+  var formBuilderIndexFile = path.join(output, "form-builders.ts");
+  if (options.formBuilderIndex !== false) {
+    generate(
+      templates.formBuilders,
+      { formBuilders: formBuilderArray },
+      formBuilderIndexFile
+    );
+  } else if (removeStaleFiles) {
+    rmIfExists(formBuilderIndexFile);
+  }
   // Write the module
   var fullModuleFile = path.join(output, moduleFile + ".ts");
   if (options.apiModule !== false) {
@@ -714,6 +773,8 @@ function processModels(swagger, options) {
       modelName: name,
       modelClass: modelClass,
       modelFile: toFileName(modelClass),
+      formBuilderClass: modelClass + "FormBuilder",
+      formBuilderFile: toFileName(modelClass) + "form-builder",
       modelComments: toComments(model.description),
       modelParent: parent,
       modelIsObject: properties != null,
