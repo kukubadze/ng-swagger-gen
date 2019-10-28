@@ -1,7 +1,7 @@
 import { AbstractControl, ValidatorFn } from '@angular/forms';
 export function numberValidator(exclusiveMaximum ,maximum ,exclusiveMinimum,minimum): ValidatorFn {
 	return (control: AbstractControl): { [key: string]: any } | null => {
-        let errors: string[] = [];
+        const errors: string[] = [];
         if(maximum)
         {
             if (exclusiveMaximum && control.value >= maximum || !exclusiveMaximum && control.value > maximum)  {
@@ -15,7 +15,7 @@ export function numberValidator(exclusiveMaximum ,maximum ,exclusiveMinimum,mini
             }
         }
 
-		return (errors&&errors.length>0) ?  { schemeValidation: { value: control.value }}:null ;
+		return (errors&&errors.length>0) ?  { schemeValidation: { value: errors.join('\n') }}:null ;
 	};
 }
 

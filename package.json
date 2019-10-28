@@ -1,6 +1,6 @@
 {
   "name": "ng-swagger-gen-ext",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "MIT",
   "author": "CSercgey ch",
   "description": "A Swagger 2.0 codegen for Angular",
